@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK Simple
 
 on:
   push:
@@ -7,88 +7,47 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-
+    runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
-    - name: Setup Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'adopt'
-        java-version: '11'
-
-    - name: Create main.py
+    - uses: actions/checkout@v3
+    
+    - name: Create files
       run: |
+        # Main Python file
         cat > main.py << 'EOF'
         from kivy.app import App
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.button import Button
-        from kivy.uix.textinput import TextInput
         from kivy.uix.label import Label
-
-        class MainApp(App):
+        
+        class SimpleApp(App):
             def build(self):
-                layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-                
-                title = Label(text='YouTube Downloader', font_size=20, size_hint_y=None, height=50)
-                self.url_input = TextInput(hint_text='Inserisci URL YouTube', size_hint_y=None, height=50)
-                
-                btn = Button(text='Download', size_hint_y=None, height=50)
-                btn.bind(on_press=self.download)
-                
-                self.status = Label(text='Pronto', size_hint_y=None, height=30)
-                
-                layout.add_widget(title)
-                layout.add_widget(self.url_input)
-                layout.add_widget(btn)
-                layout.add_widget(self.status)
-                
-                return layout
-            
-            def download(self, btn):
-                url = self.url_input.text
-                if url:
-                    self.status.text = 'Download completato! (demo)'
-                else:
-                    self.status.text = 'Inserisci un URL'
-
-        MainApp().run()
+                return Label(text='YouTube Downloader\nFunziona!')
+        
+        SimpleApp().run()
         EOF
-
-    - name: Create buildozer.spec
-      run: |
+        
+        # Buildozer spec
         cat > buildozer.spec << 'EOF'
         [app]
-        title = YouTube Downloader
-        package.name = youtubedownloader
-        package.domain = org.example
+        title = YouTubeDownloader
+        package.name = ytdownloader
+        package.domain = org.test
         source.dir = .
         source.include_exts = py
-        version = 1.0
+        version = 0.1
         requirements = python3,kivy
-        permissions = INTERNET
-        orientation = portrait
         
         [buildozer]
-        log_level = 2
+        log_level = 1
         EOF
-
-    - name: Build with Bulldozer action
-      uses: ArtemSBulgakov/buildozer-action@v1
-      id: buildozer
+    
+    - name: Build APK
+      uses: RoyalHollowayCS/buildozer-action@v1.0.0
       with:
         command: buildozer android debug
-        buildozer_version: master
-
-    - name: Upload artifacts
+    
+    - name: Upload APK
       uses: actions/upload-artifact@v3
       with:
-        name: package
-        path: ${{ steps.buildozer.outputs.filename }}
+        name: apk
+        path: bin/*.apk
