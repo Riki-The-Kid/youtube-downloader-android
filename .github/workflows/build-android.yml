@@ -3,72 +3,58 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-20.04
+    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
-
+        python-version: 3.9
+        
     - name: Install system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          git zip unzip openjdk-17-jdk python3-pip autoconf \
-          libtool pkg-config zlib1g-dev libncurses5-dev \
-          libncursesw5-dev libtinfo5 cmake libffi-dev \
-          libssl-dev libltdl-dev build-essential ccache
-
-    - name: Setup Java
+        sudo apt update -qq > /dev/null
+        sudo apt install -qq --yes --no-install-recommends \
+          python3-pip python3-setuptools git unzip openjdk-17-jdk \
+          autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
+          libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        
+    - name: Setup Java environment
       run: |
         echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
         echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
+        
     - name: Install Python dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install buildozer cython
-
+        python -m pip install --upgrade pip wheel setuptools
+        pip install buildozer cython==0.29.33 kivy
+        
     - name: Cache Buildozer global directory
       uses: actions/cache@v3
       with:
-        path: ~/.buildozer
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
-
-    - name: Cache Buildozer dependencies
+        path: .buildozer_global
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+        
+    - name: Cache Buildozer directory
       uses: actions/cache@v3
       with:
         path: .buildozer
-        key: ${{ runner.os }}-buildozer-deps-${{ hashFiles('buildozer.spec') }}
-
+        key: buildozer-${{ hashFiles('buildozer.spec') }}
+        
     - name: Build with Buildozer
       run: |
         buildozer android debug
-
-    - name: Upload APK artifact
+        
+    - name: Upload artifacts
       uses: actions/upload-artifact@v3
+      if: always()
       with:
-        name: android-apk
-        path: bin/*.apk
-
-    - name: Create Release
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        name: Release v1.0.${{ github.run_number }}
-        files: bin/*.apk
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: package
+        path: bin/
