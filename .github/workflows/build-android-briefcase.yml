@@ -7,12 +7,24 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: Create improved main.py
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'adopt'
+        java-version: '11'
+
+    - name: Create main.py
       run: |
         cat > main.py << 'EOF'
         from kivy.app import App
@@ -20,161 +32,34 @@ jobs:
         from kivy.uix.button import Button
         from kivy.uix.textinput import TextInput
         from kivy.uix.label import Label
-        from kivy.uix.popup import Popup
-        from kivy.clock import Clock
-        import threading
 
-        class YoutubeDownloaderApp(App):
+        class MainApp(App):
             def build(self):
-                # Layout principale
-                main_layout = BoxLayout(
-                    orientation='vertical',
-                    padding=20,
-                    spacing=15
-                )
+                layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
                 
-                # Titolo
-                title = Label(
-                    text='YouTube Downloader',
-                    font_size=24,
-                    size_hint_y=None,
-                    height=60,
-                    color=(1, 1, 1, 1)
-                )
+                title = Label(text='YouTube Downloader', font_size=20, size_hint_y=None, height=50)
+                self.url_input = TextInput(hint_text='Inserisci URL YouTube', size_hint_y=None, height=50)
                 
-                # Input URL
-                self.url_input = TextInput(
-                    hint_text='Incolla qui il link YouTube...',
-                    size_hint_y=None,
-                    height=50,
-                    multiline=False,
-                    font_size=16
-                )
+                btn = Button(text='Download', size_hint_y=None, height=50)
+                btn.bind(on_press=self.download)
                 
-                # Bottone download
-                download_btn = Button(
-                    text='📥 Scarica Video',
-                    size_hint_y=None,
-                    height=60,
-                    font_size=18,
-                    background_color=(0.8, 0.2, 0.2, 1)
-                )
-                download_btn.bind(on_press=self.start_download)
+                self.status = Label(text='Pronto', size_hint_y=None, height=30)
                 
-                # Status label
-                self.status_label = Label(
-                    text='Pronto per il download',
-                    size_hint_y=None,
-                    height=40,
-                    color=(0.8, 0.8, 0.8, 1)
-                )
+                layout.add_widget(title)
+                layout.add_widget(self.url_input)
+                layout.add_widget(btn)
+                layout.add_widget(self.status)
                 
-                # Progress label
-                self.progress_label = Label(
-                    text='',
-                    size_hint_y=None,
-                    height=30,
-                    color=(0.6, 0.9, 0.6, 1)
-                )
-                
-                # Info label
-                info_label = Label(
-                    text='Inserisci un URL di YouTube e premi Scarica.\nI file verranno salvati nella cartella Download.',
-                    size_hint_y=None,
-                    height=80,
-                    text_size=(None, None),
-                    halign='center',
-                    color=(0.7, 0.7, 0.7, 1)
-                )
-                
-                # Aggiungi tutto al layout
-                main_layout.add_widget(title)
-                main_layout.add_widget(self.url_input)
-                main_layout.add_widget(download_btn)
-                main_layout.add_widget(self.status_label)
-                main_layout.add_widget(self.progress_label)
-                main_layout.add_widget(Label())  # Spacer
-                main_layout.add_widget(info_label)
-                
-                return main_layout
+                return layout
             
-            def start_download(self, instance):
-                url = self.url_input.text.strip()
-                
-                if not url:
-                    self.show_popup("Errore", "Per favore inserisci un URL!")
-                    return
-                
-                if 'youtube.com' not in url and 'youtu.be' not in url:
-                    self.show_popup("Errore", "URL non valido! Usa un link YouTube.")
-                    return
-                
-                # Simula download in background
-                self.status_label.text = "Iniziando download..."
-                threading.Thread(target=self.simulate_download).start()
-            
-            def simulate_download(self):
-                try:
-                    # Simula le fasi di download
-                    steps = [
-                        "Connessione a YouTube...",
-                        "Analisi del video...",
-                        "Download in corso... 25%",
-                        "Download in corso... 50%", 
-                        "Download in corso... 75%",
-                        "Download in corso... 100%",
-                        "Elaborazione finale...",
-                        "✅ Download completato!"
-                    ]
-                    
-                    for i, step in enumerate(steps):
-                        Clock.schedule_once(lambda dt, text=step: self.update_status(text), i * 0.5)
-                    
-                    # Mostra risultato finale
-                    Clock.schedule_once(lambda dt: self.download_complete(), len(steps) * 0.5)
-                    
-                except Exception as e:
-                    Clock.schedule_once(lambda dt: self.update_status(f"Errore: {str(e)}"), 0)
-            
-            def update_status(self, text):
-                self.status_label.text = text
-            
-            def download_complete(self):
-                self.status_label.text = "Pronto per il download"
-                self.progress_label.text = "✅ Video scaricato con successo!"
-                self.url_input.text = ""
-                self.show_popup("Successo", "Video scaricato nella cartella Download!\n\n(Questa è una versione demo)")
-            
-            def show_popup(self, title, message):
-                popup_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-                
-                popup_label = Label(
-                    text=message,
-                    text_size=(300, None),
-                    halign='center'
-                )
-                
-                close_btn = Button(
-                    text='OK',
-                    size_hint_y=None,
-                    height=40
-                )
-                
-                popup_layout.add_widget(popup_label)
-                popup_layout.add_widget(close_btn)
-                
-                popup = Popup(
-                    title=title,
-                    content=popup_layout,
-                    size_hint=(0.8, 0.6),
-                    auto_dismiss=False
-                )
-                
-                close_btn.bind(on_press=popup.dismiss)
-                popup.open()
+            def download(self, btn):
+                url = self.url_input.text
+                if url:
+                    self.status.text = 'Download completato! (demo)'
+                else:
+                    self.status.text = 'Inserisci un URL'
 
-        if __name__ == '__main__':
-            YoutubeDownloaderApp().run()
+        MainApp().run()
         EOF
 
     - name: Create buildozer.spec
@@ -183,27 +68,27 @@ jobs:
         [app]
         title = YouTube Downloader
         package.name = youtubedownloader
-        package.domain = com.example
+        package.domain = org.example
         source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas,txt,json
+        source.include_exts = py
         version = 1.0
-        requirements = python3,kivy==2.1.0
-        permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+        requirements = python3,kivy
+        permissions = INTERNET
         orientation = portrait
-        fullscreen = 0
-
+        
         [buildozer]
         log_level = 2
-        warn_on_root = 1
         EOF
 
-    - name: Build APK
-      run: |
-        docker run --rm -v "$PWD":/home/user/hostcwd \
-          kivy/buildozer android debug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
+    - name: Build with Bulldozer action
+      uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
       with:
-        name: youtube-downloader-apk
-        path: bin/*.apk
+        command: buildozer android debug
+        buildozer_version: master
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: package
+        path: ${{ steps.buildozer.outputs.filename }}
